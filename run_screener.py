@@ -2,6 +2,7 @@
 
 用法：
     python run_screener.py --jd data/jd.txt --resumes data/resumes --out output
+    python run_screener.py --jd data/jd_real.txt --resumes data/candidates --out output_real --engine graph
 """
 from __future__ import annotations
 
@@ -11,7 +12,12 @@ import time
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-from screener import agent, jd_parser, llm, loader, ranker  # noqa: E402
+from screener import agent, graph_agent, jd_parser, llm, loader, ranker  # noqa: E402
+
+ENGINES = {
+    "react": agent.screen,          # 手写 ReAct + Function Calling
+    "graph": graph_agent.screen_graph,  # LangGraph 状态图版（默认）
+}
 
 
 def main():
@@ -20,12 +26,16 @@ def main():
     ap.add_argument("--resumes", default="data/resumes", help="简历文件夹")
     ap.add_argument("--out", default="output", help="输出目录")
     ap.add_argument("--limit", type=int, default=0, help="最多处理前 N 份简历（0=全部）")
+    ap.add_argument("--engine", choices=list(ENGINES), default="graph",
+                    help="筛选引擎：graph=LangGraph（默认），react=手写 ReAct")
     args = ap.parse_args()
+    screen_fn = ENGINES[args.engine]
 
     print("== 1/3 解析 JD ==")
     jd_text = loader.load_jd(args.jd)
     jd_info = jd_parser.parse_jd(jd_text)
     print("岗位：", jd_info["title"])
+    print("引擎：", args.engine)
     must = [r["name"] for r in jd_info["requirements"] if r["weight"] == "must"]
     plus = [r["name"] for r in jd_info["requirements"] if r["weight"] == "plus"]
     print("必须要求 %d 条：" % len(must))
@@ -51,7 +61,7 @@ def main():
     for c in candidates:
         t0 = time.time()
         print("\n>> 正在筛选：%s ..." % c.name)
-        ev = agent.screen(jd_info, c)
+        ev = screen_fn(jd_info, c)
         used = ev.usage
         print("   总分 %d | 推荐 %s | 用时 %.1fs | tokens: %d in / %d out / %d 次调用" % (
             ev.overall_score, ev.recommendation, time.time() - t0,

@@ -23,7 +23,8 @@ python -m venv .venv
 pip install -r requirements.txt
 
 # 3. 跑通示例
-python run_screener.py --jd data/jd.txt --resumes data/resumes --out output
+python run_screener.py --jd data/jd.txt --resumes data/resumes --out output  # 默认 LangGraph 引擎
+python run_screener.py --engine react --jd data/jd.txt --resumes data/resumes --out output  # 手写 ReAct 版
 
 # 4. 跑评测（看推荐准确率）
 python scripts/run_evals.py --jd data/jd.txt --gold data/gold.json --resumes data/resumes
@@ -37,7 +38,8 @@ python scripts/run_evals.py --jd data/jd.txt --gold data/gold.json --resumes dat
 resume-screener-agent/
 ├── run_screener.py          # CLI：批量筛选 + 生成报告
 ├── screener/
-│   ├── agent.py             # Agent 主循环（ReAct + Function Calling + JSON 兜底）
+│   ├── agent.py             # 手写 ReAct 版主循环（Function Calling + JSON 兜底）
+│   ├── graph_agent.py       # LangGraph 状态图版（agent/tools 节点 + 条件路由）
 │   ├── tools.py             # 工具定义与执行：search_resume / get_section
 │   ├── loader.py            # 简历/JD 解析（PDF/DOCX/TXT/MD）+ 分节分句
 │   ├── jd_parser.py         # 用 LLM 把 JD 解析成"必须/加分"要求清单
